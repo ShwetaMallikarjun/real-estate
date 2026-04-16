@@ -1,0 +1,204 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ───────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  AGENT
+}
+
+enum LocationType {
+  PROVINSI
+  KOTA
+  KECAMATAN
+}
+
+enum PropertyStatus {
+  DIJUAL
+  DISEWA
+}
+
+enum PropertyType {
+  APARTEMEN
+  RUMAH
+  LAINNYA
+}
+
+// ─── Models ──────────────────────────────────────────────
+
+model User {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  password  String
+  name      String
+  role      Role
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  agent     Agent?
+  favorites Favorite[]
+
+  @@index([role])
+}
+
+model Agent {
+  id          String     @id @default(cuid())
+  userId      String     @unique
+  name        String
+  email       String
+  phone       String
+  whatsapp    String
+  tentang     String     @db.Text
+  socialMedia Json
+  foto        String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  properties  Property[]
+
+  @@index([email])
+}
+
+model Location {
+  id        String       @id @default(cuid())
+  name      String
+  type      LocationType
+  parentId  String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  parent     Location?   @relation("LocationHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children   Location[]  @relation("LocationHierarchy")
+  properties Property[]
+
+  @@index([parentId])
+  @@index([type])
+}
+
+model Developer {
+  id          String   @id @default(cuid())
+  name        String
+  deskripsi   String   @db.Text
+  alamat      String
+  socialMedia Json
+  foto        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  properties          Property[]
+  propertyDevelopers   PropertyDeveloper[]
+}
+
+model Property {
+  id             String         @id @default(cuid())
+  title          String
+  propertyId     String         @unique
+  harga_asli     BigInt
+  harga_diskon   BigInt?
+  status         PropertyStatus
+  jenis          PropertyType
+  updatedOn      DateTime
+  luasBangunan   Int
+  luasTanah      Int
+  furnitur       String?
+  kamarTidur     Int
+  kamarART       Int            @default(0)
+  kamarMandi     Int
+  kamarMandiART  Int            @default(0)
+  garasi         Int            @default(0)
+  listrik        Int
+  air            String
+  sertifikat     String
+  tahunPembuatan Int
+  deskripsi      String         @db.Text
+  fasilitas      Json
+  locationId     String
+  maps           String?
+  agentId        String
+  developerId    String?
+  gallery        Json
+  videoReview    Json
+  isBoost        Boolean        @default(false)
+  boostOrder     Int            @default(0)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  location           Location            @relation(fields: [locationId], references: [id])
+  agent              Agent               @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  developer          Developer?          @relation(fields: [developerId], references: [id], onDelete: SetNull)
+  propertyDevelopers PropertyDeveloper[]
+  favorites          Favorite[]
+  reviews            Review[]
+
+  @@index([status])
+  @@index([jenis])
+  @@index([locationId])
+  @@index([agentId])
+  @@index([developerId])
+  @@index([isBoost, boostOrder])
+}
+
+model PropertyDeveloper {
+  id          String   @id @default(cuid())
+  developerId String
+  propertyId  String
+  createdAt   DateTime @default(now())
+
+  developer Developer @relation(fields: [developerId], references: [id], onDelete: Cascade)
+  property  Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([developerId, propertyId])
+  @@index([propertyId])
+}
+
+model Favorite {
+  id         String   @id @default(cuid())
+  userId     String
+  propertyId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, propertyId])
+  @@index([propertyId])
+}
+
+model Review {
+  id          String   @id @default(cuid())
+  propertyId  String
+  youtubeUrl  String
+  title       String
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+}
+
+model Blog {
+  id            String    @id @default(cuid())
+  title         String
+  slug          String    @unique
+  content       String    @db.Text
+  excerpt       String?   @db.Text
+  featuredImage String?
+  author        String
+  publishedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([publishedAt])
+  @@index([author])
+}
